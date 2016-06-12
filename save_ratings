@@ -1,0 +1,12 @@
+ratings = {1: [i for i in range(0,20)],
+			2: [i for i in range(0,5)],
+			3: [i for i in range(0,10)],}
+
+print('adding ratings')
+
+for i in ratings:
+	u = User(username = i)
+	u.save()
+	for j in ratings[i]
+		r = Rating(user_id = u__id,movie_id = j)
+		r.save()

@@ -1,0 +1,365 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>React Tutorial</title>
+    <!-- Not present in the tutorial. Just for basic styling. -->
+    <!--link rel="stylesheet" href="css/base.css" /-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.6.15/browser.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.5/marked.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+      </head>
+      <body>
+    <input type = 'hidden' id = 'csrf' value = {{csrf_token}}>
+    <div id = 'content'></div>
+    <style type="text/css">
+        #stars{
+            direction: rtl;
+            unicode-bidi: bidi-override;
+        }
+        .last{
+            color: transparent;
+        }
+        .starf{
+          display:none
+        }
+        .star:hover ~ .starf {
+          display:inline;
+        }
+
+        .star:hover ~ .star {
+          display:none;
+        }
+
+
+        .container{
+            width: 50%;
+
+            margin-left: auto;
+            margin-right: auto;
+            
+        }
+
+        .movieContainer{
+            text-align:  center;
+        }
+        .movieContainer img{
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+    <script type="text/babel">  
+        var EmotionContainer= React.createClass({
+            getInitialState: function(){
+                return {valence: 5, arousal: 5, media: 'WATCH'}
+            },
+            readData: function(){
+
+            },
+
+            simulate: function(){
+                alert('Simulating');
+                this.sendData({simulate: 1})
+            },
+
+            detector: null,
+
+            componentDidMount: function(){
+                //this.startDetect();
+            },
+
+            detect: function(){
+                if(this.props.simulate){
+                    this.simulate();
+                }
+                else{
+                    this.readData();
+                }                
+            },
+            stopDetect: function(){
+                clearInterval(this.detector)
+            },
+
+            startDetect:function(){
+                this.detect();
+                //this.detector = setInterval(this.detect.bind(this), 5000)
+            },
+            assignSliderValue:function(val){
+                return val?this.props.high:this.props.low
+            },
+            sendData: function(toSend){
+                var thisData = {csrfmiddlewaretoken: this.props.csrf}
+                for(var i in toSend){
+                    thisData[i] = toSend[i]
+                }
+                $.ajax({
+                  url: this.props.url,
+                  dataType: 'json',
+                  cache: false,
+                  success: function(data){
+                    var st = {};
+                    for(var dim in data){   
+                        st[dim] = this.assignSliderValue(data[dim])
+                    }
+                    this.setState(st,function(){
+                        this.findWords()
+                    }.bind(this));
+                  }.bind(this),
+                  error: function(xhr, status, err){
+                    console.error(this.props.url, status, err.toString());
+                  }.bind(this)
+                });
+            },
+
+            sendData: function(toSend){
+                var thisData = {csrfmiddlewaretoken: this.props.csrf}
+                for(var i in toSend){
+                    thisData[i] = toSend[i]
+                }
+                $.ajax({
+                  url: this.props.url,
+                  dataType: 'json',
+                  cache: false,
+                  type: 'POST',
+                  data: thisData,
+                  success: function(data){
+                    var st = {};
+                    for(var dim in data){   
+                        st[dim] = this.assignSliderValue(data[dim])
+                    }
+                    this.setState(st,function(){
+                        this.findWords()
+                    }.bind(this));
+                  }.bind(this),
+                  error: function(xhr, status, err){
+                    console.error(this.props.url, status, err.toString());
+                  }.bind(this)
+                });
+            },
+
+            onChangePrediction: function(category, value){
+                this.setState({category: value}, 
+                    function(){ 
+                        this.sendData({category: category, value: value})
+                        }
+                    )
+            },
+            computeInd:function(vble){
+                return 1*(this.state[vble] >=5)
+            },
+            findWords: function(){
+                var words = {'valence':['happy','sad'],'arousal':[['energetic ,agitated'],['calm','lethargic']]}
+                var valInd = this.computeInd(this.state.valence)
+                var valWord = words[valInd];
+                var aroWord = words[this.computeInd(this.state.arousal)][valInd];
+                this.setState({words: [aroWord,valWord]})
+            },
+            render: function(){
+                console.log('Container rendered');
+                var dims = ['valence','arousal'];
+                var testMovies = [{title: "Gigi (1958)", 
+                                            userRating: 0, 
+                                            avgRating: 5,
+                                            url: "https://upload.wikimedia.org/wikipedia/en/d/db/AmericanGigiPoster.jpg"},
+                                {title: "His Girl Friday (1938)",
+                                             userRating: 0,
+                                             avgRating: 5,
+                                            url: "https://upload.wikimedia.org/wikipedia/en/1/1a/His_Girl_Friday_poster.jpg"}]
+                return(//95
+                    <div className = 'container'>
+                        {this.state.words?
+                            <p>I think you are feeling <span>{this.words[0]}</span> and <span>{this.words[1]}</span> but feel
+                        free to disagree by changing the slider settings</p>
+                        :null}
+                            {dims.map(function(dim,i) {
+                            return (
+                                <EmotionSlider key = {i} 
+                                    category = {dim}
+                                    value = {this.state[dim]} 
+                                    onChange = {function(category, value){
+                                        var st = {}
+                                        st[category] = value
+                                        this.setState(st);
+                                    }.bind(this)}
+                                    onResetClick = {function(category){
+                                        var st = {}
+                                        st[category] = 5;
+                                        this.setState(st)
+                                    }.bind(this)} />
+                                 )}.bind(this))}
+                                <label> Dont predict my emotional state
+                                <input type = 'checkbox' 
+                                    onChange={function(e){
+                                        if(e.target.checked){
+                                            this.stopDetect();
+                                        }
+                                        else{
+                                            this.startDetect();
+                                        }
+                                    }.bind(this)}/></label>
+                    
+                        <MovieSlider movies = {testMovies}/>
+                </div>
+                )
+            }
+
+        });
+
+        var EmotionSlider = React.createClass({
+            makeSlider: function(){
+                $(function() {
+                    $('#'+this.props.category).slider({
+                              range: "max",
+                              min: 1,
+                              max: 9,
+                              value: this.props.value,
+                              slide: function( event, ui ) {
+                                    this.props.onChange(this.props.category,
+                                                        ui.value);
+                              }.bind(this)                              
+                            });
+                      }.bind(this));
+                },
+
+            componentDidMount: function(){
+               this.makeSlider();
+            },
+
+            componentDidUpdate: function(){
+                this.makeSlider();
+            },
+
+
+            render: function(){
+              return(
+                <div>
+                    <div id ={this.props.category} className = 'slider'></div>
+                    <ResetButton onClick = {function(){
+                                                this.props.onResetClick(this.props.category )
+                                            }.bind(this)}/>
+                </div>
+                )
+
+            }
+        });
+
+        var ResetButton = React.createClass({
+            render: function(){
+                return(
+                    <button onClick={this.props.onClick}> Reset </button>
+                )
+            }
+        })
+
+        var MovieSlider = React.createClass({
+            getInitialState: function(){
+                return {presentMovie: this.props.movies[0], ind: 0}
+            },
+            onClickNext: function(){
+                this.setState({ind: 1},function(){
+                    this.setState({presentMovie: this.props.movies[this.state.ind]})
+                })
+            },
+            onRate:function(rating){
+                console.log('MovieSlider.onRate called');
+                this.props.movies[this.state.ind].userRating = Number(rating);
+                this.setState({presentMovie:this.props.movies[this.state.ind] })
+            },
+            onFinish:function(){
+                alert('Done!');
+            },
+            render: function(){
+                return(
+                <div className = 'movieContainer'>
+                    <MovieElement movie = {this.state.presentMovie}
+
+                                onRate = {this.onRate}/>
+                    {this.state.ind < this.props.movies.length-1?
+                        <button onClick = {this.onClickNext}> >> </button>
+                    :
+                        <button onClick = {this.onFinish}> Finish </button>
+                    }
+                </div>
+                )
+            }
+        })
+
+        var MovieElement = React.createClass({
+            //props are image, user-rating, avg-rating, title, id
+            getInitialState: function(){
+                return {rating: this.props.movie.avgRating}
+            },
+            componentDidUpdate: function(){
+                this.setState({rating: this.props.movie.avgRating});
+            },
+            render: function(){
+                console.log('MovieElement.props');
+                console.log(this.props);
+                return(
+                    <div className = 'slider'>
+                        <h3> {this.props.movie.title} </h3>
+                        <img src = {this.props.movie.url}/>
+                        <RatingStars rating = {this.state.rating}
+                                    onChange = {this.props.onRate}
+                                    user = {false}
+                                    /*onClick = {function(){
+                                        console.log(this.props.movie.id)
+                                    }.bind(this)}*//>
+                        <RatingStars rating = {0}
+                                    onChange= {this.props.onRate}
+                                    user = {true}
+                                    /*onClick = {function(){
+                                        console.log(this.props.movie.id)
+                                    }.bind(this)}*//>
+                    </div>
+                )
+            }
+        })
+
+        var RatingStars = React.createClass({
+                getInitialState: function(){
+                    return {rating: this.props.rating}
+                },            
+            render: function(){
+
+                return(
+                        (!this.props.user)?
+                        <div>{this.props.rating}</div>
+                        :
+                        <input type = 'text' 
+                            value = {this.state.rating}
+                            onChange = {function(e){this.onChange(e.target.value)}}/>
+                        
+
+                )
+            }
+        })
+        
+                var someMovies = [{title: "Gigi (1958)", 
+                                            userRating: 0, 
+                                            avgRating: 5,
+                                            url: "https://upload.wikimedia.org/wikipedia/en/d/db/AmericanGigiPoster.jpg"},
+                                {title: "His Girl Friday (1938)",
+                                             userRating: 0,
+                                             avgRating: 5,
+                                            url: "https://upload.wikimedia.org/wikipedia/en/1/1a/His_Girl_Friday_poster.jpg"}]        
+
+        ReactDOM.render(
+          <EmotionContainer url = 'http://localhost:8000/eeg' simulate = {true} 
+                high = {7} low = {3} movies = {someMovies} 
+                csrf = {document.getElementById('csrf').value}/>,
+          document.getElementById('content')
+        );
+
+
+
+
+
+    </script>
+      </body>
+  </html>
