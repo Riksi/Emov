@@ -5,41 +5,128 @@ import numpy as np
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.forms.models import model_to_dict
-MIN_COUNT = 5
+from .mock_database import mock_db
+import random
+import os
+import json
+NUM_MOVIES = 1682#Movie.objects.count()
 Y_FILE_PATH = ''
 R_FILE_PATH = ''
 PNN_SIGMA = {'arousal': 1,'valence':9}
 MOVIES = []
-import random
+
 def eeg_handler(request):
 	if request.method == 'POST':
-		if request.POST['simulate']:
-			return JsonResponse(obtain_predictions(SIMULATED,True))
+		data = json.loads(request.POST.get('data'))
+		if data['simulate']:
+				example = fetch_mock_eeg()
+		else:
+			example = request.POST['eeg']
+		return JsonResponse(obtain_predictions(example,True))
+
+def static_data_path(filename):
+	return os.path.join(os.getcwd(),'movies/static/%s'%filename)
+
+def fetch_mock_eeg():
+	eegfile = open(static_data_path('psd_test.txt'))
+	eeg = np.loadtxt(eegfile)
+	row = random.randrange(0,eeg.shape[0])
+	print(row)
+	return np.array([eeg[row,:]])
+
+def obtain_predictions(example,simulate=False):
+	if simulate:
+		ex = example
+	else:
+		ex = process_data(example)
+	cats = ['arousal','valence']
+	return dict(zip(cats,[int(predict_emot(cat,load_eeg_data(cat),ex)) for cat in cats]))
+
+def predict_emot(category,data,example):
+	features,labels = data
+	p = PNN(2,PNN_SIGMA[category],example,features,labels+1)
+	pred = p.predict()[0][0]
+	print(category + ' %f'%pred)
+	return pred
+
+#print(predict_emot())
+
+def process_data(data):
+	return(np.array(data))
+
+def load_eeg_data(category):
+	features = np.loadtxt(static_data_path('psd_train.txt'))
+	labels = np.loadtxt(static_data_path('%s_train.txt'%category[:3]))
+	return features,labels
+
 
 def retrieve_movies(request):
-	return JsonResponse({
-		'movies':MOVIES
-		})
-	
+	return JsonResponse(mock_db)
+
+
+#a = vectorize_ratings(dict(zip([1,16,2,13,12,6],[5,3,4,1,5,2])))
+#print(a[0])
+#print(a[1])
+
 def main_page(request):
 	return render(request,'movies/front_end.html')
 
 def prediction_handler(request):
 	if request.method == 'POST':
 		eeg = request.POST['eeg']
-		return JsonResponse({'predictions':obtain_predictions()})
+		#return JsonResponse({'predictions':obtain_predictions()})
+		#print
+		return JsonResponse({'arousal':1,'valence':1})
 
-def receive_rating(request):
-	user = request.user
-	
-	count = Count.objects.get(user=user)
-	if count == MIN_COUNT:
-		return compute_recms(user)
+def receive_ratings(request):
+	if request.method == 'POST':
+		data = json.loads(request.POST.get('data'))
+		#ratings = request.POST['ratings']
+		#print(ratings);
+		#print(data)
+		p = process_ratings(data['ratings'])
+		#print(vectorize_ratings(p)[0].shape)
+		#print(vectorize_ratings(p)[1].shape)
+		y,r = vectorize_ratings(p)
+		Y,R = load_ratings_data()
+		Y2,R2 = add_user_ratings(Y,R,y,r)
+		#print(Y2.shape)
+		#print(R2.shape)
+		return JsonResponse({'success':True});
 
-def fetch_recms(uid):
-	Recm.objects.values_list('user',flat=True)\
-	.aggregate(Max('timestamp'))\
-	.filter(user_id= uid)
+
+
+def process_ratings(data):
+	intkeys = map(lambda i: int(i),data.keys())
+	return dict(zip(intkeys,data.values()))
+
+def vectorize_ratings(ratings):
+	y = np.array([[ratings.get(i+1) or 0 for i in range(NUM_MOVIES)]],dtype='int32')
+	r = 1*(y>0)
+	return y.T,r.T
+
+def load_ratings_data():
+	Y = np.loadtxt(static_data_path('Ymatrix.txt'))
+	R = np.loadtxt(static_data_path('Rmatrix2.txt'))
+	return Y,R
+
+#print(load_ratings_data()[0].shape)
+#print(load_ratings_data()[1].shape)
+
+def add_user_ratings(Y,R,y,r):
+	Y2 = np.concatenate((Y,y),axis=1)
+	R2 = np.concatenate((R,r),axis=1)
+	return Y2, R2
+
+def fetch_recms(ratings):
+	pass
+
+
+
+#def fetch_recms(uid):
+#	Recm.objects.values_list('user',flat=True)\
+#	.aggregate(Max('timestamp'))\
+#	.filter(user_id= uid)
 
 def compute_recms(user):
 	#Cofi object
@@ -85,30 +172,15 @@ def save_mat(mat,filepath):
 	f = open(filepath,'a')
 	f.writelines(mat)
 
-def process_data(data):
-	return(np.array(data))
 
 
-def load_data(category):
-	features = np.loadtxt('c:/users/anush/web_dev/emov/mysite/movies/psd_train.txt')
-	labels = np.loadtxt('c:/users/anush/web_dev/emov/mysite/movies/%s_train.txt'%category[:3])
-	return features,labels
 
-def predict_emot(category,data,example):
-	features,labels = data
-	ex_feat = process_data(example)
-	p = PNN(2,PNN_SIGMA[category],ex_feat,features,labels+1)
-	return p.predict()[0][0]
 
-SIMULATED = np.array([[-1.702,-1.398,-1.3422,-1.5464,-1.5345,-1.7486,-1.6709,-1.9506,-1.7256,-2.277,-1.1031,-1.481,-1.3798,-1.4612,-1.2354,-2.1266,-1.583,-1.5248,-1.4193,-1.1367,-1.6672,-1.8083,-1.3734,-1.8768,-1.41,-1.6154,-1.9256,-2.2608,-1.2727,-1.8074,-1.4219,-1.5362,-1.741,-1.4685,-1.4649,-1.362,-1.4336,-1.8358,-1.5443,-1.8571,-1.259,-1.7944,-1.0321,-1.109,-0.91514,-1.1002,-1.0697,-1.6415,-1.73,-1.4843,-1.5686,-1.3158,-1.6102,-1.6187,-1.4889,-1.9175,-1.3138,-1.4474,-1.653,-1.9828,-1.4421,-1.6237,-1.2669,-1.1705,-1.6988,-1.156,-0.94572,-1.2485,-1.465,-1.3481,-1.2582,-1.3887,-1.2058,-1.4515,-0.89946,-1.1998,-1.0541,-1.0652,-1.1238,-1.4865,-1.3985,-1.3284,-1.0714,-1.064,-1.144,-1.4723,-1.1485,-1.2037,-0.99343,-1.2407,-1.4666,-1.6717,-0.99962,-1.706,-1.1913,-1.2514,-2.4483,-1.7559,-1.4293,-1.8215,-1.5875,-1.3548,-1.4684,-1.3427,-1.48,-2.0401,-1.0101,-1.224,-1.1238,-0.99413,-1.2247,-1.8884,-1.8907,-1.5166,-1.5631,-1.3996,-1.7774,-2.0046,-1.4337,-1.8288,-1.2631,-1.3931,-1.7502,-2.0971,-1.1243,-1.6736,-1.5267,-1.6792,0.017154,0.061592,-0.050175,-0.086969,0.20785,-0.17444,-0.2322,0.030483,0.32591,0.086958,0.25562,0.20158,0.28576,-0.32264,0.39336,-0.063327,-0.023719,-0.028433,0.032818,-0.22029,-0.2435,0.031133,0.41609,0.26663,0.56979,0.46966,0.66319,-0.30784,0.29735,0.043178,0.084503,-0.20775,-0.18608,-0.1823,-0.32848,0.19422,0.29027,0.36056,0.18274,0.45623,0.29635,-0.091253,0.13367,-0.52768,-0.073411,-0.16664,0.24565,-0.019563,-0.297,0.37524,0.35174,0.25662,0.2096,0.42418,0.491,0.64051,1,1,4][:128]])
 
-def obtain_predictions(example,simulate=False):
-	if simulate:
-		ex = example
-	else:
-		ex = process_data(example)
-	cats = ['arousal','valence']
-	return dict(zip(cats,[int(predict_emot(cat,load_data(cat),ex)) for cat in cats]))
+
+#SIMULATED = np.array([[-1.702,-1.398,-1.3422,-1.5464,-1.5345,-1.7486,-1.6709,-1.9506,-1.7256,-2.277,-1.1031,-1.481,-1.3798,-1.4612,-1.2354,-2.1266,-1.583,-1.5248,-1.4193,-1.1367,-1.6672,-1.8083,-1.3734,-1.8768,-1.41,-1.6154,-1.9256,-2.2608,-1.2727,-1.8074,-1.4219,-1.5362,-1.741,-1.4685,-1.4649,-1.362,-1.4336,-1.8358,-1.5443,-1.8571,-1.259,-1.7944,-1.0321,-1.109,-0.91514,-1.1002,-1.0697,-1.6415,-1.73,-1.4843,-1.5686,-1.3158,-1.6102,-1.6187,-1.4889,-1.9175,-1.3138,-1.4474,-1.653,-1.9828,-1.4421,-1.6237,-1.2669,-1.1705,-1.6988,-1.156,-0.94572,-1.2485,-1.465,-1.3481,-1.2582,-1.3887,-1.2058,-1.4515,-0.89946,-1.1998,-1.0541,-1.0652,-1.1238,-1.4865,-1.3985,-1.3284,-1.0714,-1.064,-1.144,-1.4723,-1.1485,-1.2037,-0.99343,-1.2407,-1.4666,-1.6717,-0.99962,-1.706,-1.1913,-1.2514,-2.4483,-1.7559,-1.4293,-1.8215,-1.5875,-1.3548,-1.4684,-1.3427,-1.48,-2.0401,-1.0101,-1.224,-1.1238,-0.99413,-1.2247,-1.8884,-1.8907,-1.5166,-1.5631,-1.3996,-1.7774,-2.0046,-1.4337,-1.8288,-1.2631,-1.3931,-1.7502,-2.0971,-1.1243,-1.6736,-1.5267,-1.6792,0.017154,0.061592,-0.050175,-0.086969,0.20785,-0.17444,-0.2322,0.030483,0.32591,0.086958,0.25562,0.20158,0.28576,-0.32264,0.39336,-0.063327,-0.023719,-0.028433,0.032818,-0.22029,-0.2435,0.031133,0.41609,0.26663,0.56979,0.46966,0.66319,-0.30784,0.29735,0.043178,0.084503,-0.20775,-0.18608,-0.1823,-0.32848,0.19422,0.29027,0.36056,0.18274,0.45623,0.29635,-0.091253,0.13367,-0.52768,-0.073411,-0.16664,0.24565,-0.019563,-0.297,0.37524,0.35174,0.25662,0.2096,0.42418,0.491,0.64051,1,1,4][:128]])
+
+
 
 
 #print(obtain_predictions([],True))

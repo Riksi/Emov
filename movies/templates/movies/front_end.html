@@ -52,25 +52,30 @@
             margin-left: auto;
             margin-right: auto;
         }
+
+        .emoSlider{
+           margin: 10px;
+        }
     </style>
     <script type="text/babel">  
         var EmotionContainer= React.createClass({
             getInitialState: function(){
-                return {valence: 5, arousal: 5, media: 'WATCH'}
+                return {
+                    media: 'WATCH' ,
+                    movies: [],
+                    presentInd:0,
+                    ratings: {}}
             },
             readData: function(){
 
             },
-
             simulate: function(){
-                alert('Simulating');
-                this.sendData({simulate: 1})
+                this.sendData({simulate: 1},this.updateEmotions,this.props.eegUrl)
             },
 
-            detector: null,
-
             componentDidMount: function(){
-                //this.startDetect();
+                this.fetchMovies();
+                this.detect();
             },
 
             detect: function(){
@@ -81,101 +86,89 @@
                     this.readData();
                 }                
             },
-            stopDetect: function(){
-                clearInterval(this.detector)
-            },
-
-            startDetect:function(){
-                this.detect();
-                //this.detector = setInterval(this.detect.bind(this), 5000)
-            },
             assignSliderValue:function(val){
                 return val?this.props.high:this.props.low
             },
-            sendData: function(toSend){
-                var thisData = {csrfmiddlewaretoken: this.props.csrf}
-                for(var i in toSend){
-                    thisData[i] = toSend[i]
-                }
+            fetchMovies: function(){
                 $.ajax({
-                  url: this.props.url,
+                  url: this.props.moviesUrl,
                   dataType: 'json',
                   cache: false,
+                  context: this,
                   success: function(data){
-                    var st = {};
-                    for(var dim in data){   
-                        st[dim] = this.assignSliderValue(data[dim])
-                    }
-                    this.setState(st,function(){
-                        this.findWords()
-                    }.bind(this));
-                  }.bind(this),
+                    this.setState(data)
+                    },
                   error: function(xhr, status, err){
                     console.error(this.props.url, status, err.toString());
-                  }.bind(this)
+                  }
                 });
             },
-
-            sendData: function(toSend){
-                var thisData = {csrfmiddlewaretoken: this.props.csrf}
-                for(var i in toSend){
-                    thisData[i] = toSend[i]
-                }
+            sendData: function(toSend,callback,url){
                 $.ajax({
-                  url: this.props.url,
+                  url:url,
                   dataType: 'json',
                   cache: false,
                   type: 'POST',
-                  data: thisData,
+                  beforeSend: function(xhr,settings){
+                    xhr.setRequestHeader("X-CSRFToken", this.props.csrf);
+                        },
+                  data: {data: JSON.stringify(toSend)},
+                  context: this,
                   success: function(data){
-                    var st = {};
-                    for(var dim in data){   
-                        st[dim] = this.assignSliderValue(data[dim])
-                    }
-                    this.setState(st,function(){
-                        this.findWords()
-                    }.bind(this));
-                  }.bind(this),
+                            callback(data);
+                        },
                   error: function(xhr, status, err){
                     console.error(this.props.url, status, err.toString());
-                  }.bind(this)
+                  }
                 });
             },
-
-            onChangePrediction: function(category, value){
-                this.setState({category: value}, 
-                    function(){ 
-                        this.sendData({category: category, value: value})
-                        }
-                    )
+            updateEmotions: function(data){
+                    var st = {};
+                    for(var dim in data){
+                        st[dim] = data[dim]?this.props.high:this.props.low;
+                    }
+                    this.setState(st,function(){
+                        this.findWords();
+                    }.bind(this));
+                  },
+            nextMovie: function(rating){
+                this.setState({
+                    ratings: this.updateRatingObject(rating),
+                    presentInd: this.state.presentInd+1
+                },function(){
+                    if(this.state.presentInd == this.state.movies.length){
+                       this.sendData({'ratings':this.state.ratings},function(data){
+                        console.log(data);
+                       },this.props.ratingsUrl)
+                    }
+                }.bind(this)
+                )
             },
-            computeInd:function(vble){
-                return 1*(this.state[vble] >=5)
+            updateRatingObject: function(rating){
+                var ratingsNew = Object.assign({},this.state.ratings);
+                ratingsNew[this.state.movies[this.state.presentInd].id] = rating;
+                return ratingsNew;
+            },
+            calculateInd: function(dim){
+                return 1*(this.state[dim]>=5)
             },
             findWords: function(){
-                var words = {'valence':['happy','sad'],'arousal':[['energetic ,agitated'],['calm','lethargic']]}
-                var valInd = this.computeInd(this.state.valence)
-                var valWord = words[valInd];
-                var aroWord = words[this.computeInd(this.state.arousal)][valInd];
+                var words = {'valence':['sad','happy'],'arousal':[['lethargic','calm'],['agitated' ,'energetic']]}
+                var valInd = this.calculateInd('valence');
+                var aroInd = this.calculateInd('arousal');
+                var valWord = words['valence'][valInd];
+                var aroWord = words['arousal'][aroInd][valInd];
                 this.setState({words: [aroWord,valWord]})
             },
             render: function(){
-                console.log('Container rendered');
                 var dims = ['valence','arousal'];
-                var testMovies = [{title: "Gigi (1958)", 
-                                            userRating: 0, 
-                                            avgRating: 5,
-                                            url: "https://upload.wikimedia.org/wikipedia/en/d/db/AmericanGigiPoster.jpg"},
-                                {title: "His Girl Friday (1938)",
-                                             userRating: 0,
-                                             avgRating: 5,
-                                            url: "https://upload.wikimedia.org/wikipedia/en/1/1a/His_Girl_Friday_poster.jpg"}]
-                return(//95
+                return(
                     <div className = 'container'>
-                        {this.state.words?
-                            <p>I think you are feeling <span>{this.words[0]}</span> and <span>{this.words[1]}</span> but feel
-                        free to disagree by changing the slider settings</p>
-                        :null}
+                        {this.state.movies.length && this.state.words?
+                        <div className = 'emoSliderContainer'>
+                            <p>I think you are feeling <span>{this.state.words[1]}</span> and <span>{this.state.words[0]}</span> but you are
+                            free to disagree by changing the slider settings</p>
+                        
                             {dims.map(function(dim,i) {
                             return (
                                 <EmotionSlider key = {i} 
@@ -184,33 +177,32 @@
                                     onChange = {function(category, value){
                                         var st = {}
                                         st[category] = value
-                                        this.setState(st);
-                                    }.bind(this)}
-                                    onResetClick = {function(category){
-                                        var st = {}
-                                        st[category] = 5;
-                                        this.setState(st)
-                                    }.bind(this)} />
+                                        this.setState(st,function(){
+                                            console.log('Value of ' + category+': '+this.state[category])
+                                        }.bind(this));
+                                    }.bind(this)}/>
                                  )}.bind(this))}
-                                <label> Dont predict my emotional state
-                                <input type = 'checkbox' 
-                                    onChange={function(e){
-                                        if(e.target.checked){
-                                            this.stopDetect();
-                                        }
-                                        else{
-                                            this.startDetect();
-                                        }
-                                    }.bind(this)}/></label>
-                    
-                        <MovieSlider movies = {testMovies}/>
+                        </div>
+                        :<h2>Trying to read your mind...</h2>}
+                        {(this.state.movies.length && this.state.presentInd<(this.state.movies.length))?
+                            <MovieSlider  
+                                        movie = {this.state.movies[this.state.presentInd]}
+                                        nextMovie = {this.nextMovie}
+                                        onRate = {this.onRate}
+                                        lastMovie = {this.state.presentInd==(this.state.movies.length-1)}/>
+                        : null
+                        }
                 </div>
                 )
             }
 
         });
 
+
+
         var EmotionSlider = React.createClass({
+
+
             makeSlider: function(){
                 $(function() {
                     $('#'+this.props.category).slider({
@@ -238,10 +230,7 @@
             render: function(){
               return(
                 <div>
-                    <div id ={this.props.category} className = 'slider'></div>
-                    <ResetButton onClick = {function(){
-                                                this.props.onResetClick(this.props.category )
-                                            }.bind(this)}/>
+                    <div id ={this.props.category} className = 'emoSlider'></div>
                 </div>
                 )
 
@@ -258,73 +247,67 @@
 
         var MovieSlider = React.createClass({
             getInitialState: function(){
-                return {presentMovie: this.props.movies[0], ind: 0}
-            },
-            onClickNext: function(){
-                this.setState({ind: 1},function(){
-                    this.setState({presentMovie: this.props.movies[this.state.ind]})
-                })
-            },
-            onRate:function(rating){
-                console.log('MovieSlider.onRate called');
-                this.props.movies[this.state.ind].userRating = Number(rating);
-                this.setState({presentMovie:this.props.movies[this.state.ind] })
+                return {rating: 0}
             },
             onFinish:function(){
                 alert('Done!');
             },
+            onRate: function(rating){
+                this.setState({rating: rating||0},function(){
+                    console.log(this.state.rating)
+                }.bind(this));
+            },
+            onClickNext: function(){
+            var prevRating = this.state.rating;
+            this.setState({rating: 0},function(){
+                    this.props.nextMovie(prevRating);
+                }.bind(this));
+            },
             render: function(){
                 return(
                 <div className = 'movieContainer'>
-                    <MovieElement movie = {this.state.presentMovie}
-
-                                onRate = {this.onRate}/>
-                    {this.state.ind < this.props.movies.length-1?
-                        <button onClick = {this.onClickNext}> >> </button>
-                    :
-                        <button onClick = {this.onFinish}> Finish </button>
-                    }
+                        <MovieElement movie = {this.props.movie}
+                                    userRating = {this.state.rating}
+                                    onRate = {this.onRate}/>
+                        {!this.props.lastMovie ?
+                            <button onClick = {this.onClickNext}> >> </button>
+                        :
+                            <button onClick = {this.onClickNext}> Finish </button>
+                        }
                 </div>
                 )
             }
         })
 
+        //var MovieMoodPanel = React.createClass({
+//
+        //})
+
+        var alertJ= function(data){
+            alert(JSON.stringify(data));
+        }
+
         var MovieElement = React.createClass({
-            //props are image, user-rating, avg-rating, title, id
-            getInitialState: function(){
-                return {rating: this.props.movie.avgRating}
-            },
-            componentDidUpdate: function(){
-                this.setState({rating: this.props.movie.avgRating});
-            },
             render: function(){
-                console.log('MovieElement.props');
-                console.log(this.props);
                 return(
                     <div className = 'slider'>
                         <h3> {this.props.movie.title} </h3>
                         <img src = {this.props.movie.url}/>
-                        <RatingStars rating = {this.state.rating}
-                                    onChange = {this.props.onRate}
-                                    user = {false}
-                                    /*onClick = {function(){
-                                        console.log(this.props.movie.id)
-                                    }.bind(this)}*//>
-                        <RatingStars rating = {0}
-                                    onChange= {this.props.onRate}
-                                    user = {true}
-                                    /*onClick = {function(){
-                                        console.log(this.props.movie.id)
-                                    }.bind(this)}*//>
+                        <RatingStars rating = {this.props.movie.avgRating}
+                                    user = {false}/>
+                        <RatingStars rating = {this.props.userRating}
+                                    onRatingChange= {this.props.onRate}
+                                    user = {true}/>
                     </div>
                 )
             }
         })
 
         var RatingStars = React.createClass({
-                getInitialState: function(){
-                    return {rating: this.props.rating}
-                },            
+
+            onRatingChange: function(e){
+                this.props.onRatingChange(e.target.value)
+            },          
             render: function(){
 
                 return(
@@ -332,27 +315,19 @@
                         <div>{this.props.rating}</div>
                         :
                         <input type = 'text' 
-                            value = {this.state.rating}
-                            onChange = {function(e){this.onChange(e.target.value)}}/>
-                        
-
+                            value = {this.props.rating}
+                            onChange = {this.onRatingChange}/>
                 )
             }
         })
-        
-                var someMovies = [{title: "Gigi (1958)", 
-                                            userRating: 0, 
-                                            avgRating: 5,
-                                            url: "https://upload.wikimedia.org/wikipedia/en/d/db/AmericanGigiPoster.jpg"},
-                                {title: "His Girl Friday (1938)",
-                                             userRating: 0,
-                                             avgRating: 5,
-                                            url: "https://upload.wikimedia.org/wikipedia/en/1/1a/His_Girl_Friday_poster.jpg"}]        
 
         ReactDOM.render(
-          <EmotionContainer url = 'http://localhost:8000/eeg' simulate = {true} 
-                high = {7} low = {3} movies = {someMovies} 
-                csrf = {document.getElementById('csrf').value}/>,
+          <EmotionContainer eegUrl = 'http://localhost:8000/eeg'  
+                            ratingsUrl = 'http://localhost:8000/ratings' 
+                            moviesUrl = 'http://localhost:8000/torate' 
+                            simulate = {true} 
+                            high = {7} low = {3}  
+                            csrf = {document.getElementById('csrf').value}/>,
           document.getElementById('content')
         );
 
@@ -361,5 +336,15 @@
 
 
     </script>
+    <!--                                <label> Dont predict my emotional state
+                                <input type = 'checkbox' 
+                                    onChange={function(e){
+                                        if(e.target.checked){
+                                            this.stopDetect();
+                                        }
+                                        else{
+                                         this.startDetect();
+                                        }
+                                    }.bind(this)}/></label-->
       </body>
   </html>
