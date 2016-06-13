@@ -35,13 +35,17 @@
         .star:hover ~ .star {
           display:none;
         }
+        body{;
+            padding: 0;
+            margin: 0;
+        }
 
-
-        .container{
+        .emoSliderContainer,.container{
             width: 50%;
 
             margin-left: auto;
             margin-right: auto;
+            text-align:  center;
             
         }
 
@@ -62,9 +66,16 @@
             getInitialState: function(){
                 return {
                     media: 'WATCH' ,
+                    mode: 'PREDICT',
                     movies: [],
                     presentInd:0,
-                    ratings: {}}
+                    ratings: {},
+                    style: {
+                        padding: '40px',
+                        backgroundColor:'#a2c4da',
+                        height: '100%',
+                        width: '100%'
+                    }}
             },
             readData: function(){
 
@@ -76,6 +87,9 @@
             componentDidMount: function(){
                 this.fetchMovies();
                 this.detect();
+            },
+            onChoose: function(match){
+                this.setState({match:match})
             },
 
             detect: function(){
@@ -129,20 +143,38 @@
                     }
                     this.setState(st,function(){
                         this.findWords();
+                        this.changeColour();
                     }.bind(this));
                   },
+            changeColour: function(){
+                var style = Object.assign({},this.state.style);
+                style.backgroundColor =  this.matchColour();
+                this.setState({style: style});
+            },
             nextMovie: function(rating){
-                this.setState({
+                var newState = {
                     ratings: this.updateRatingObject(rating),
                     presentInd: this.state.presentInd+1
-                },function(){
-                    if(this.state.presentInd == this.state.movies.length){
-                       this.sendData({'ratings':this.state.ratings},function(data){
-                        console.log(data);
-                       },this.props.ratingsUrl)
-                    }
-                }.bind(this)
-                )
+                }
+                if ((this.state.presentInd+1)==this.state.movies.length){
+                    newState = Object.assign(newState,{mode: 'CHOOSE'});
+                }
+                this.setState(newState)
+            },
+            requestRecms: function(match){
+                this.sendData({'ratings':this.state.ratings,
+                                    'arousal': this.state.arousal,
+                                    'valence': this.state.valence,
+                                    'match': match},function(data){
+                                                        alertJ(data);
+                                    },this.props.ratingsUrl)
+            },
+            matchColour:function(){
+                var colours = {
+                    0: ['#8c8cff','#e47a73'],
+                    1: ['#54ff54','#ffae3d']
+                }
+                return colours[this.calculateInd('valence')][this.calculateInd('arousal')]
             },
             updateRatingObject: function(rating){
                 var ratingsNew = Object.assign({},this.state.ratings);
@@ -153,22 +185,26 @@
                 return 1*(this.state[dim]>=5)
             },
             findWords: function(){
-                var words = {'valence':['sad','happy'],'arousal':[['lethargic','calm'],['agitated' ,'energetic']]}
+                var words = {'valence':['sad','happy'],'arousal':[['lethargic','calm'],['agitated' ,'energised']]}
                 var valInd = this.calculateInd('valence');
                 var aroInd = this.calculateInd('arousal');
                 var valWord = words['valence'][valInd];
                 var aroWord = words['arousal'][aroInd][valInd];
-                this.setState({words: [aroWord,valWord]})
+                this.setState({words: [aroWord,valWord], mode: 'RATE'})
             },
             render: function(){
+                var inRateMode = (this.state.movies.length && this.state.presentInd<(this.state.movies.length))&&this.state.words;
+                var ratingOver = (this.state.presentInd &&  this.state.presentInd== (this.state.movies.length));
                 var dims = ['valence','arousal'];
                 return(
-                    <div className = 'container'>
-                        {this.state.movies.length && this.state.words?
+                    <div className = 'container' style = {this.state.style}>
+                        {(this.state.mode =='PREDICT')?<h2>Trying to read your mind...</h2>:null}
+                        {(this.state.mode =='RATE')?
                         <div className = 'emoSliderContainer'>
-                            <p>I think you are feeling <span>{this.state.words[1]}</span> and <span>{this.state.words[0]}</span> but you are
-                            free to disagree by changing the slider settings</p>
-                        
+                            <h3>Share your movie preferences and then I'll try to find you a movie to match or contrast with your mood</h3>
+                            
+                            <p> I think you feel <span>{this.state.words[1]}</span> and <span>{this.state.words[0]}</span> at the moment but let me know if that's wrong by changing the slider settings</p>
+                            
                             {dims.map(function(dim,i) {
                             return (
                                 <EmotionSlider key = {i} 
@@ -178,19 +214,28 @@
                                         var st = {}
                                         st[category] = value
                                         this.setState(st,function(){
-                                            console.log('Value of ' + category+': '+this.state[category])
+                                            this.changeColour();
                                         }.bind(this));
                                     }.bind(this)}/>
                                  )}.bind(this))}
-                        </div>
-                        :<h2>Trying to read your mind...</h2>}
-                        {(this.state.movies.length && this.state.presentInd<(this.state.movies.length))?
                             <MovieSlider  
                                         movie = {this.state.movies[this.state.presentInd]}
                                         nextMovie = {this.nextMovie}
                                         onRate = {this.onRate}
-                                        lastMovie = {this.state.presentInd==(this.state.movies.length-1)}/>
-                        : null
+                                        lastMovie = {this.state.presentInd==(this.state.movies.length-1)}/>                            
+                        </div>
+                        :null}
+
+
+  
+                        {(this.state.mode=='CHOOSE') ? <ChoicePanel onChoose={function(match){
+                            this.setState({mode:'RECOMMEND'},function(){
+                                    this.requestRecms(match);
+                            }.bind(this))
+                        }.bind(this)}/>:null}
+
+                        {(this.state.mode == 'RECOMMEND')?
+                            <h2>Finding you a movie ... </h2>:null
                         }
                 </div>
                 )
@@ -199,6 +244,36 @@
         });
 
 
+        var ChoicePanel = React.createClass({
+            getInitialState: function(){
+                return { 
+                    pstyle: {display:'none'} }
+            },
+            makeChoice: function(e){
+                this.setState({match: 1*(e.target.value=='match')})
+            },
+            render: function(){
+                return(
+                    <div >
+                        <h4> Do you want a movie to match or contrast with your emotional state? </h4>
+                        <label>Match
+                                <input type = 'radio' name = 'choice' value = 'match' onChange = {this.makeChoice}/>
+                        </label>
+                        <label>Contrast
+                                <input type = 'radio' name = 'choice' value = 'contrast' onChange = {this.makeChoice}/> 
+                        </label>
+                        
+                        <button onClick = {function(){
+                            if(typeof(this.state.match) === 'undefined'){
+                                this.setState({pstyle:{display:'block'}})
+                            }
+                            else {this.props.onChoose(this.state.match);}
+                        }.bind(this)}> Find me a movie  </button>
+                        <p style= {this.state.pstyle}>Please select an option</p>
+                    </div>
+                )
+            }
+        })
 
         var EmotionSlider = React.createClass({
 

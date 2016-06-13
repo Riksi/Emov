@@ -1,24 +1,20 @@
 import numpy as np
-
-#A further pre-processing using data to include only those movies
-#with at least 10 ratings i.e. indices given by np.where(np.sum(R,axis=1)>=10)
-
 class Cofi:
     def __init__(self,
-                Y_data, 
-                R_data,
+                Y, 
+                R,
                 num_features,
                 num_recms = 10,
                 lmd = 10,
                 alpha=0.001,
                 num_iters = 500,
-                       user = None,
-                       debug = False,
-                       normalize = True, 
-                       debugGD = False):
+                   user = None,
+                   debug = False,
+                   normalize = True, 
+                   debugGD = False):
             self.num_features = num_features
-            self.Y = np.loadtxt(Y_data)
-            self.R = np.loadtxt(R_data)
+            self.Y = Y
+            self.R = R
             self.num_movies,self.num_users = self.Y.shape
             self.Y_mean = np.zeros((self.num_movies,1))
             if debug:
@@ -92,5 +88,7 @@ class Cofi:
         real_preds = self.predictions[:,self.user-1:self.user]*(self.R[:,self.user-1:self.user]!=1)
         movie_inds = [i for i in range(0,self.num_movies)]
         movie_inds.sort(key = lambda ind: real_preds[ind,:], reverse = True)
-        return (real_preds[movie_inds],movie_inds[:self.num_recms])
+        movie_ids = list(map(lambda ind:ind+1,movie_inds)) 
+        self.preds = real_preds
+        return movie_ids[:self.num_recms]
         

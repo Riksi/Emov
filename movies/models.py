@@ -12,6 +12,9 @@ class Count(models.Model):
 	count = models.IntegerField(validators=[MaxValueValidator(5),\
 											 MinValueValidator(0)], default = 0)
 
+class Genres(models.Model):
+	movie = models.ForeignKey(Movie,on_delete=models.CASCADE)
+	genres = models.CharField(max_length = 40)
 
 class Rating(models.Model):
 	user = models.ForeignKey(User,on_delete=models.CASCADE)
