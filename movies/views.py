@@ -11,6 +11,8 @@ import movies.genres as genres
 import random
 import os
 import json
+import requests 
+import re
 
 NUM_MOVIES = 1682
 PNN_SIGMA = {'arousal': 1,'valence':9}
@@ -47,7 +49,6 @@ def predict_emot(category,data,example):
 	pred = p.predict()[0][0]
 	return pred
 
-
 def process_data(data):
 	return(np.array(data))
 
@@ -56,10 +57,8 @@ def load_eeg_data(category):
 	labels = np.loadtxt(static_data_path('%s_train.txt'%category[:3]))
 	return features,labels
 
-
 def retrieve_movies(request):
-	return JsonResponse(small_mock_db)
-
+	return JsonResponse(mock_db)
 
 def main_page(request):
 	return render(request,'movies/front_end.html')
@@ -74,15 +73,22 @@ def receive_ratings(request):
 		data = json.loads(request.POST.get('data'))
 		ratingsData = data['ratings']
 		r = fetch_recms(ratingsData)
-		emo_values([data['arousal'],data['valence']],data['match'])
-		movie = filter_by_genre(r,(data['arousal']>=5),(data['valence']>=5))
-		return JsonResponse({'recommended':movie});
+		movie_id = filter_by_genre(r,*emo_values([data['arousal'],data['valence']],data['match']))
+		movie = Movie.objects.get(id = movie_id)
+		return JsonResponse({'data':fetch_movie_api_data(movie.name)});
 
 def emo_values(dims,match):
 	vals = list(map(lambda x:1*(x>=5) if match else 1*(x<5),dims))
 	return vals
 
-
+def fetch_movie_api_data(name):
+	name = name[:name.find('(19')]
+	s = re.search(r', [A|The|An]', name)
+	if s:
+		st = s.start()
+		name = name[st+2:s.endpos] + ' '+ name[:st]
+	data = requests.get("http://www.omdbapi.com/?t=%s&y=&plot=short&r=json"%name)
+	return data.json()
 
 """for a in [7,3]:
 	for v in [7,3]:
@@ -122,8 +128,13 @@ def compute_recms(Y,R):
 def filter_by_genre(r,aro,val):
 	gnr = [Genres.objects.get(movie__id = i).genres for i in r]
 	scores = [genres.compute_scores(g) for g in gnr]
-	print(scores)
-	return r[genres.best_score(aro,val,scores)]
+	#print(r)
+	best= r[genres.best_score(aro,val,scores)]
+	#print(best)
+	return	best
+
+def filter_by_decade(r):
+	movies = Movie.objects.get(id__in = r)
 
 def save_recms(recms,row_id_map):
 	for r in recms:

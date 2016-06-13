@@ -50,13 +50,12 @@ def compute_scores(gr_str):
 	genres = set(parse_genres(gr_str))
 	genres = genres - genres.intersection(not_included)
 	if genres:
-		vals = map(lambda g: genre_map.get(g),genres)
+		vals = list(map(lambda g: genre_map.get(g),genres))
 		scores = [sum([i[dim] for i in vals])/len(genres) for dim in dims]
+		#print(scores)
 		return(scores)
 
 def best_score(aro,val,scores):
+	#print(list(map(lambda s: (aro-s[0])**2 + (val-s[1])**2 if s else 3,scores)))
 	return scores.index(min(scores,key = lambda s: (aro-s[0])**2 + (val-s[1])**2 if s else 3))
-
-
-
 

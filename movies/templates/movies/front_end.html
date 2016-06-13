@@ -162,12 +162,26 @@
                 this.setState(newState)
             },
             requestRecms: function(match){
+                var f = function(){
+                    console.log(this.state.recommended)
+                }.bind(this);
                 this.sendData({'ratings':this.state.ratings,
                                     'arousal': this.state.arousal,
                                     'valence': this.state.valence,
                                     'match': match},function(data){
-                                                        alertJ(data);
-                                    },this.props.ratingsUrl)
+                                        
+                                        console.log(data);
+                                        var data = data['data'];
+                                        this.setState({
+                                            recommended: {
+                                                title: data['Title'] + ' (' + data['Year'] + ')',
+                                                imdbID: data['imdbID'],
+                                                avgRating: data['imdbRating']/2,
+                                                url: data['Poster']
+                                            },
+                                            mode: 'RECOMMENDATION'
+                                        },f)
+                                    }.bind(this),this.props.ratingsUrl)
             },
             matchColour:function(){
                 var colours = {
@@ -237,6 +251,15 @@
                         {(this.state.mode == 'RECOMMEND')?
                             <h2>Finding you a movie ... </h2>:null
                         }
+                        {(this.state.mode=='RECOMMENDATION') ?
+                        <div>
+                            <h2>Here's a movie that you might like</h2>
+                            <MovieElement movie = {this.state.recommended}
+                                    onRate = {this.onRate}/>
+                        </div>
+                        :null
+                        }
+
                 </div>
                 )
             }
@@ -364,15 +387,23 @@
 
         var MovieElement = React.createClass({
             render: function(){
+                var imdbID = this.props.movie.imdbID;
+                var link = imdbID?'http://www.imdb.com/title/'+imdbID:null;
                 return(
                     <div className = 'slider'>
-                        <h3> {this.props.movie.title} </h3>
+                        {link? 
+                        <a href = {link}>
+                            <h3> {this.props.movie.title} </h3>
+                        </a>:
+                        <h3> {this.props.movie.title} </h3>}                        
                         <img src = {this.props.movie.url}/>
                         <RatingStars rating = {this.props.movie.avgRating}
                                     user = {false}/>
+                        {typeof(this.props.userRating) != 'undefined'?
                         <RatingStars rating = {this.props.userRating}
                                     onRatingChange= {this.props.onRate}
                                     user = {true}/>
+                        :null }
                     </div>
                 )
             }
