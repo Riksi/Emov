@@ -1,17 +1,19 @@
+{% load staticfiles %}
 <html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>React Tutorial</title>
-    <!-- Not present in the tutorial. Just for basic styling. -->
-    <!--link rel="stylesheet" href="css/base.css" /-->
+    <title>Emov</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react-dom.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.6.15/browser.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/0.3.5/marked.min.js"></script>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/rateYo/2.1.1/jquery.rateyo.min.css">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400' rel='stylesheet' type='text/css'>
   <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+  
   <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
       </head>
       <body>
@@ -35,9 +37,15 @@
         .star:hover ~ .star {
           display:none;
         }
-        body{;
+        html{
+                height: 100%;
+        }
+        body{
             padding: 0;
             margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Open Sans', sans-serif;
         }
 
         .emoSliderContainer,.container{
@@ -49,17 +57,123 @@
             
         }
 
-        .movieContainer{
+        .movieContainer, .choicePanel{
             text-align:  center;
+            padding: 10px;
+            background-color: white;
+            box-shadow: 5px 5px 5px #888888;
         }
         .movieContainer img{
             margin-left: auto;
             margin-right: auto;
         }
 
-        .emoSlider{
-           margin: 10px;
+        .emoMessages{
+            text-align: left;
+            margin: 25px auto;
         }
+
+        .emoOuter{
+            margin-bottom: 25px;
+
+        }
+
+        .emoSlider{
+           width: 40%;
+           display: inline-block;
+
+        }
+
+        .emoji{
+            display: inline-block;
+            width: 25%;
+            margin: 0;
+            font-weight: bold;
+            font-variant: small-caps;
+            padding-bottom: 20px;
+        }
+
+        .slider, .sliderButton{
+            display: inline-block;
+        }
+        .slider{
+            margin-left: 5%;
+            width: 90%;
+        }
+        .sliderButton{
+            position: relative;
+            width: 5%;
+            height: 630px;
+        }
+
+        button{
+            background-color: #3F51B5;
+            border-radius:5px;
+            border:none;
+            font-size: 18px;
+            color: white;
+            height: 40px;
+            box-shadow: 2px 2px 2px #888888;
+        }
+
+        button:hover{
+            opacity: 0.8;
+            cursor: pointer;
+        }
+
+        .sliderButton button{
+            position: absolute;
+            height: 50px;
+            width: 50px;
+            bottom: 15px;
+            left: -35px;
+            font-size:28px;
+        }
+        .choicePanel{
+            margin-left: auto;
+            text-align: center;
+            width: 50%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+
+        .choicePanel label{
+            padding: 10px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .choicePanel h3{
+            font-style: italic;
+        }
+
+        .choicePanel button{
+            margin-left: 15px;
+            background-color: #F44336;
+
+        }
+
+        .emoWord{
+            font-weight: bold;
+        }
+#arousal{
+  background: initial; /* For browsers that do not support gradients */
+  background: -webkit-linear-gradient(left,rgba(0,255,0,0.5), rgba(255,0,0,0.5)); /*Safari 5.1-6*/
+  background: -o-linear-gradient(right,rgba(0,255,0,0.5), rgba(255,0,0,0.5)); /*Opera 11.1-12*/
+  background: -moz-linear-gradient(right,rgba(0,255,0,0.5), rgba(255,0,0,0.5)); /*Fx 3.6-15*/
+  background: linear-gradient(to right, rgba(0,255,0,0.5), rgba(255,0,0,0.5)); /*Standard*/
+}
+
+#valence{
+  background: initial; /* For browsers that do not support gradients */
+  background: -webkit-linear-gradient(left,rgba(75,0,130,0.5), rgba(255,152,0,0.5)); /*Safari 5.1-6*/
+  background: -o-linear-gradient(right,rgba(75,0,130,0.5), rgba(255,152,0,0.5)); /*Opera 11.1-12*/
+  background: -moz-linear-gradient(right,rgba(75,0,130,0.5), rgba(255,152,0,0.5)); /*Fx 3.6-15*/
+  background: linear-gradient(to right, rgba(75,0,130,0.5), rgba(255,152,0,0.5)); /*Standard*/
+}
+
     </style>
     <script type="text/babel">  
         var EmotionContainer= React.createClass({
@@ -73,7 +187,7 @@
                     style: {
                         padding: '40px',
                         backgroundColor:'#a2c4da',
-                        height: '100%',
+                        height: '150%',
                         width: '100%'
                     }}
             },
@@ -159,7 +273,10 @@
                 if ((this.state.presentInd+1)==this.state.movies.length){
                     newState = Object.assign(newState,{mode: 'CHOOSE'});
                 }
-                this.setState(newState)
+                this.setState(newState,function(){
+                    $("#rateYo1").rateYo("rating", this.state.movies[this.state.presentInd].avgRating);
+                    $("#rateYo2").rateYo("rating", 0);
+                }.bind(this))
             },
             requestRecms: function(match){
                 var f = function(){
@@ -199,7 +316,7 @@
                 return 1*(this.state[dim]>=5)
             },
             findWords: function(){
-                var words = {'valence':['sad','happy'],'arousal':[['lethargic','calm'],['agitated' ,'energised']]}
+                var words = {'valence':['sad','happy'],'arousal':[['low','calm'],['agitated' ,'energised']]}
                 var valInd = this.calculateInd('valence');
                 var aroInd = this.calculateInd('arousal');
                 var valWord = words['valence'][valInd];
@@ -210,20 +327,23 @@
                 var inRateMode = (this.state.movies.length && this.state.presentInd<(this.state.movies.length))&&this.state.words;
                 var ratingOver = (this.state.presentInd &&  this.state.presentInd== (this.state.movies.length));
                 var dims = ['valence','arousal'];
+                var texts = [{'postext':'Happy','negtext':'Sad'},{'postext' : 'Energised/Agitated','negtext':'Calm/Low' }];
                 return(
                     <div className = 'container' style = {this.state.style}>
                         {(this.state.mode =='PREDICT')?<h2>Trying to read your mind...</h2>:null}
                         {(this.state.mode =='RATE')?
                         <div className = 'emoSliderContainer'>
-                            <h3>Share your movie preferences and then I'll try to find you a movie to match or contrast with your mood</h3>
+                            <h2>Share your movie preferences and then I'll try to find you a movie that <i>matches</i> or <i>contrasts</i> with your mood</h2>
                             
-                            <p> I think you feel <span>{this.state.words[1]}</span> and <span>{this.state.words[0]}</span> at the moment but let me know if that's wrong by changing the slider settings</p>
-                            
+                            <p className='emoMessages'> I think you feel <span className = 'emoWord'>{this.state.words[1]}</span> and <span className = 'emoWord'>{this.state.words[0]}</span> at this moment but let me know if that's wrong by changing the slider settings</p>
+                            <div className = 'emoSliders'>
                             {dims.map(function(dim,i) {
                             return (
                                 <EmotionSlider key = {i} 
                                     category = {dim}
                                     value = {this.state[dim]} 
+                                    postext = {texts[i]['postext']}
+                                    negtext = {texts[i]['negtext']}
                                     onChange = {function(category, value){
                                         var st = {}
                                         st[category] = value
@@ -232,6 +352,7 @@
                                         }.bind(this));
                                     }.bind(this)}/>
                                  )}.bind(this))}
+                            </div>
                             <MovieSlider  
                                         movie = {this.state.movies[this.state.presentInd]}
                                         nextMovie = {this.nextMovie}
@@ -255,7 +376,18 @@
                         <div>
                             <h2>Here's a movie that you might like</h2>
                             <MovieElement movie = {this.state.recommended}
+                                    recommended = {true}
                                     onRate = {this.onRate}/>
+                        <div className = 'choicePanel'>
+                            <h3> What do you think? </h3>
+                            <label>Suits my mood
+                                    <input type = 'radio' name = 'response' value = 'positive'/>
+                            </label>
+                            <label>Not too sure
+                                    <input type = 'radio' name = 'response' value = 'negative'/>
+                            </label>
+                            <button>Send</button>
+                        </div>
                         </div>
                         :null
                         }
@@ -277,8 +409,8 @@
             },
             render: function(){
                 return(
-                    <div >
-                        <h4> Do you want a movie to match or contrast with your emotional state? </h4>
+                    <div className = 'choicePanel'>
+                        <h3> Do you want a movie that matches or contrasts with your emotional state? </h3>
                         <label>Match
                                 <input type = 'radio' name = 'choice' value = 'match' onChange = {this.makeChoice}/>
                         </label>
@@ -327,13 +459,17 @@
 
             render: function(){
               return(
-                <div>
+                <div className = 'emoOuter'>
+                <p className    = 'emoji'> {this.props.negtext}</p>
                     <div id ={this.props.category} className = 'emoSlider'></div>
+                <p className    = 'emoji'>{this.props.postext}</p>
                 </div>
                 )
 
             }
         });
+
+
 
         var ResetButton = React.createClass({
             render: function(){
@@ -362,16 +498,22 @@
                 }.bind(this));
             },
             render: function(){
+                if(this.props.lastMovie){
+                    var style = {width:'100px',fontSize:'18px', left: '-85px'};
+                }
                 return(
                 <div className = 'movieContainer'>
                         <MovieElement movie = {this.props.movie}
                                     userRating = {this.state.rating}
                                     onRate = {this.onRate}/>
+                        <div className = 'sliderButton'>
                         {!this.props.lastMovie ?
-                            <button onClick = {this.onClickNext}> >> </button>
+                            <button onClick = {this.onClickNext}> ➜ </button>
                         :
-                            <button onClick = {this.onClickNext}> Finish </button>
+                            <button onClick = {this.onClickNext}
+                                    style ={style}> Finish </button>
                         }
+                        </div>
                 </div>
                 )
             }
@@ -398,36 +540,58 @@
                         <h3> {this.props.movie.title} </h3>}                        
                         <img src = {this.props.movie.url}/>
                         <RatingStars rating = {this.props.movie.avgRating}
-                                    user = {false}/>
-                        {typeof(this.props.userRating) != 'undefined'?
+                                    user = {false} id = {1} label = 'Average rating'
+                                    recm = {this.props.recommended}/>
+                        {!this.props.recommended?
                         <RatingStars rating = {this.props.userRating}
                                     onRatingChange= {this.props.onRate}
-                                    user = {true}/>
-                        :null }
+                                    label  = 'Your rating'
+                                    user = {true} id = {2}/>
+                        :null}
                     </div>
                 )
             }
         })
 
         var RatingStars = React.createClass({
-
-            onRatingChange: function(e){
-                this.props.onRatingChange(e.target.value)
-            },          
+            componentDidMount: function(){
+                this.composeElement();
+            },
+            composeElement: function(id){
+                var id = this.props.id;
+                var ratingObj = { rating: this.props.rating||0, 
+                                  starWidth: '25px',
+                                 readOnly: !this.props.user,
+                                onSet: function(rating){
+                                    this.props.onRatingChange(rating);
+                                }.bind(this)
+                                }
+               if(this.props.recm){
+                ratingObj = Object.assign(ratingObj,{ratedFill: "#E74C3C"});
+               }
+                    $(function () {
+                        $("#rateYo" + id).rateYo(ratingObj);
+                    }.bind(this));   
+                    console.log('ratingObj:');
+                    console.log(ratingObj);             
+            },      
             render: function(){
-
+                
+                var elemId = "rateYo"+this.props.id;
+                var style = {marginLeft: 'auto', marginRight: 'auto' };
+                
                 return(
-                        (!this.props.user)?
-                        <div>{this.props.rating}</div>
-                        :
-                        <input type = 'text' 
-                            value = {this.props.rating}
-                            onChange = {this.onRatingChange}/>
+                    <p > 
+                    <div id={elemId} style={style}>
+                    </div>
+                    {this.props.label}
+                    </p>
                 )
             }
         })
 
         ReactDOM.render(
+
           <EmotionContainer eegUrl = 'http://localhost:8000/eeg'  
                             ratingsUrl = 'http://localhost:8000/ratings' 
                             moviesUrl = 'http://localhost:8000/torate' 
@@ -452,5 +616,9 @@
                                          this.startDetect();
                                         }
                                     }.bind(this)}/></label-->
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/rateYo/2.1.1/jquery.rateyo.min.js"></script>
+        <script type="text/javascript" src="{% static 'jquery.emoji.js' %}">
+
       </body>
   </html>
