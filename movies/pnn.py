@@ -27,31 +27,4 @@ class PNN:
         self.output= np.array([self.hidden_layer(self.input_layer(k)) for k in range(1,self.C+1)])
         self.preds =np.array([np.argmax(self.output,0)])
         return self.preds
-    
-"""
-X = np.array([[0.8, 0.3, 0.6, 0.2],
-             [0.7, 0.4, 0.6, 0.3],
-             [0.8, 0.3, 0.6, 0.3],
-             [0.8, 0.4, 0.6, 0.2],
-             [0.8, 0.3, 0.5, 0.2],
-             [0.9, 0.4, 0.7, 0.2],
-             [0.7, 0.3, 0.5, 0.2],
-             [0.7, 0.4, 0.5, 0.3]])
-
-y = np.array([[1 for i in range(4)]+[2 for i in range(4)]]).T
-
-x = np.array([[0.75, 0.32, 0.6, 0.21], 
-              [0.75, 0.32, 0.6, 0.21],
-[0.9, 0.4, 0.7, 0.2]])
-
-p = PNN(2,.5,x,X,y)
-print(p.row_inds(1))
-print(X[p.row_inds(1),:])
-print(p.row_inds(2))
-print(X[p.row_inds(2),:])
-print(p.input_layer(1))
-print(p.input_layer(2))   
-print(p.hidden_layer(p.input_layer(1)))
-print(p.hidden_layer(p.input_layer(2)))
-print(p.predict())
-print(p.preds)"""
+  

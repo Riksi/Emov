@@ -90,11 +90,6 @@ def fetch_movie_api_data(name):
 	data = requests.get("http://www.omdbapi.com/?t=%s&y=&plot=short&r=json"%name)
 	return data.json()
 
-"""for a in [7,3]:
-	for v in [7,3]:
-		print(a,v)
-		print('match: %s'%str(emo_values([a,v],1)))
-		print('contrast: %s'%str(emo_values([a,v],0)))"""
 
 def process_ratings(data):
 	intkeys = map(lambda i: int(i),data.keys())

@@ -48,7 +48,7 @@
             font-family: 'Open Sans', sans-serif;
         }
 
-        .emoSliderContainer,.container{
+        .emoSliderContainer,.specialContainer{
             width: 50%;
 
             margin-left: auto;
@@ -158,6 +158,7 @@
         .emoWord{
             font-weight: bold;
         }
+
 #arousal{
   background: initial; /* For browsers that do not support gradients */
   background: -webkit-linear-gradient(left,rgba(0,255,0,0.5), rgba(255,0,0,0.5)); /*Safari 5.1-6*/
@@ -173,7 +174,63 @@
   background: -moz-linear-gradient(right,rgba(75,0,130,0.5), rgba(255,152,0,0.5)); /*Fx 3.6-15*/
   background: linear-gradient(to right, rgba(75,0,130,0.5), rgba(255,152,0,0.5)); /*Standard*/
 }
+.spinner {
+  margin: 100px auto;
+  width: 500px;
+  height: 40px;
+  text-align: center;
+  font-size: 10px;
+}
 
+.spinner h2{
+    font-size: 28px;
+}
+
+.spinner > div {
+  background-color: #333;
+  height: 100%;
+  width: 6px;
+  display: inline-block;
+  margin: 2px;
+  
+  -webkit-animation: sk-stretchdelay 1.2s infinite ease-in-out;
+  animation: sk-stretchdelay 1.2s infinite ease-in-out;
+}
+
+.spinner .rect2 {
+  -webkit-animation-delay: -1.1s;
+  animation-delay: -1.1s;
+}
+
+.spinner .rect3 {
+  -webkit-animation-delay: -1.0s;
+  animation-delay: -1.0s;
+}
+
+.spinner .rect4 {
+  -webkit-animation-delay: -0.9s;
+  animation-delay: -0.9s;
+}
+
+.spinner .rect5 {
+  -webkit-animation-delay: -0.8s;
+  animation-delay: -0.8s;
+}
+
+@-webkit-keyframes sk-stretchdelay {
+  0%, 40%, 100% { -webkit-transform: scaleY(0.4) }  
+  20% { -webkit-transform: scaleY(1.0) }
+}
+
+@keyframes sk-stretchdelay {
+  0%, 40%, 100% { 
+    transform: scaleY(0.4);
+    -webkit-transform: scaleY(0.4);
+  }  20% { 
+    transform: scaleY(1.0);
+    -webkit-transform: scaleY(1.0);
+  }
+}
     </style>
     <script type="text/babel">  
         var EmotionContainer= React.createClass({
@@ -328,9 +385,10 @@
                 var ratingOver = (this.state.presentInd &&  this.state.presentInd== (this.state.movies.length));
                 var dims = ['valence','arousal'];
                 var texts = [{'postext':'Happy','negtext':'Sad'},{'postext' : 'Energised/Agitated','negtext':'Calm/Low' }];
+                var cl = (!(this.state.mode =='PREDICT') && !(this.state.mode == 'RECOMMEND'))?'container specialContainer':"container"
                 return(
-                    <div className = 'container' style = {this.state.style}>
-                        {(this.state.mode =='PREDICT')?<h2>Trying to read your mind...</h2>:null}
+                    <div className = {cl} style = {this.state.style}>
+                        {(this.state.mode =='PREDICT')?<Spinner message ="Trying to read your mind..."/>:null}
                         {(this.state.mode =='RATE')?
                         <div className = 'emoSliderContainer'>
                             <h2>Share your movie preferences and then I'll try to find you a movie that <i>matches</i> or <i>contrasts</i> with your mood</h2>
@@ -369,9 +427,7 @@
                             }.bind(this))
                         }.bind(this)}/>:null}
 
-                        {(this.state.mode == 'RECOMMEND')?
-                            <h2>Finding you a movie ... </h2>:null
-                        }
+                        {(this.state.mode == 'RECOMMEND')?<Spinner message ="Looking for a movie ..."/>:null}
                         {(this.state.mode=='RECOMMENDATION') ?
                         <div>
                             <h2>Here's a movie that you might like</h2>
@@ -397,6 +453,23 @@
             }
 
         });
+
+        var Spinner = React.createClass({
+            render: function(){
+                return(
+                    
+                    <div className="spinner">
+                    <h2>{this.props.message}</h2>
+                      <div className="rect1"></div>
+                      <div className="rect2"></div>
+                      <div className="rect3"></div>
+                      <div className="rect4"></div>
+                      <div className="rect5"></div>
+                    </div>
+
+                    )
+            }
+        })
 
 
         var ChoicePanel = React.createClass({
